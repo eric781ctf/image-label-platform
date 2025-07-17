@@ -330,7 +330,7 @@ class ImageCanvas(QWidget):
             # 使用選中類別的顏色
             color = self.color_manager.get_color_for_category(self.selected_category)
             
-            pen = QPen(QColor(color), 2, Qt.SolidLine)
+            pen = QPen(QColor(color), 4, Qt.SolidLine)  # 增加線條粗細到4
             painter.setPen(pen)
             painter.drawRect(rect)
     
@@ -349,15 +349,15 @@ class ImageCanvas(QWidget):
         else:
             color = self.color_manager.get_default_color()
         
-        pen = QPen(QColor(color), 2, Qt.SolidLine)
+        pen = QPen(QColor(color), 4, Qt.SolidLine)  # 增加線條粗細到4
         painter.setPen(pen)
         painter.drawRect(rect)
         
         # 繪製類別標籤
         if annotation.category:
-            painter.setFont(QFont("Arial", 10))
-            painter.setPen(QPen(QColor(color), 1))
-            painter.drawText(rect.topLeft() + QPoint(2, -5), annotation.category)
+            painter.setFont(QFont("Arial", 14, QFont.Bold))  # 增加字體大小和粗體
+            painter.setPen(QPen(QColor(color), 2))  # 增加文字筆刷粗細
+            painter.drawText(rect.topLeft() + QPoint(4, -8), annotation.category)
     
     def resizeEvent(self, event):
         """視窗大小變更事件"""
@@ -393,7 +393,7 @@ class MainWindow(QMainWindow):
     
     def init_ui(self):
         """初始化使用者介面"""
-        self.setWindowTitle("手動標註軟體")
+        self.setWindowTitle("Image Labeling Tool")
         self.setGeometry(100, 100, 1200, 800)
         
         # 建立主要元件
@@ -432,32 +432,38 @@ class MainWindow(QMainWindow):
         
         # 匯入資料夾按鈕
         self.import_btn = QPushButton("匯入資料夾")
+        self.import_btn.setObjectName("importBtn")
         self.import_btn.clicked.connect(self.import_folder)
         layout.addWidget(self.import_btn)
         
         # 類別選擇
-        layout.addWidget(QLabel("標註類別:"))
+        category_title = QLabel("標註類別:")
+        category_title.setObjectName("titleLabel")
+        layout.addWidget(category_title)
         self.category_combo = QComboBox()
         self.category_combo.currentTextChanged.connect(self.on_category_changed)
         layout.addWidget(self.category_combo)
         
         # 當前圖片資訊
         self.image_info_label = QLabel("請先匯入資料夾")
+        self.image_info_label.setObjectName("infoLabel")
         layout.addWidget(self.image_info_label)
         
         # 標註統計
         self.annotation_stats_label = QLabel("標註數量: 0")
+        self.annotation_stats_label.setObjectName("infoLabel")
         layout.addWidget(self.annotation_stats_label)
         
         # 操作說明
-        help_text = QLabel("""
-操作說明:
-1. 先匯入包含label.txt的資料夾
+        help_title = QLabel("操作說明:")
+        help_title.setObjectName("titleLabel")
+        layout.addWidget(help_title)
+        
+        help_text = QLabel("""1. 先匯入包含label.txt的資料夾
 2. 必須選擇標註類別才能標註
 3. 滑鼠左鍵拖拽框選區域
 4. Delete 鍵刪除最後一個標註
-5. 切換圖片時自動儲存
-        """)
+5. 切換圖片時自動儲存""")
         help_text.setWordWrap(True)
         layout.addWidget(help_text)
         
@@ -470,16 +476,25 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(bottom_widget)
         
         self.prev_btn = QPushButton("上一張")
+        self.prev_btn.setObjectName("navBtn")
         self.prev_btn.clicked.connect(self.prev_image)
         self.prev_btn.setEnabled(False)
         
         self.next_btn = QPushButton("下一張")
+        self.next_btn.setObjectName("navBtn")
         self.next_btn.clicked.connect(self.next_image)
         self.next_btn.setEnabled(False)
+        
+        # 完成按鈕（只在最後一張時顯示）
+        self.finish_btn = QPushButton("完成標註")
+        self.finish_btn.setObjectName("navBtn")
+        self.finish_btn.clicked.connect(self.finish_annotation)
+        self.finish_btn.setVisible(False)
         
         layout.addWidget(self.prev_btn)
         layout.addStretch()
         layout.addWidget(self.next_btn)
+        layout.addWidget(self.finish_btn)
         
         return bottom_widget
     
@@ -494,10 +509,11 @@ class MainWindow(QMainWindow):
                 background-color: #A3B18A;
                 color: white;
                 border: none;
-                padding: 10px;
-                border-radius: 5px;
-                font-size: 14px;
+                padding: 12px;
+                border-radius: 8px;
+                font-size: 16px;
                 font-weight: bold;
+                min-height: 20px;
             }
             QPushButton:hover {
                 background-color: #8F9779;
@@ -509,13 +525,28 @@ class MainWindow(QMainWindow):
                 background-color: #C4C4C4;
                 color: #888888;
             }
+            /* 匯入資料夾按鈕特殊樣式 */
+            QPushButton#importBtn {
+                padding: 20px;
+                font-size: 18px;
+                min-height: 30px;
+            }
+            /* 導航按鈕特殊樣式 */
+            QPushButton#navBtn {
+                padding: 16px 24px;
+                font-size: 24px;
+                font-weight: bold;
+                min-height: 30px;
+                min-width: 120px;
+            }
             QComboBox {
                 background-color: #B7B7A4;
                 color: #6C584C;
                 border: 2px solid #6C584C;
-                padding: 8px;
+                padding: 10px;
                 border-radius: 5px;
-                font-size: 14px;
+                font-size: 16px;
+                font-weight: bold;
             }
             QComboBox::drop-down {
                 border: none;
@@ -528,7 +559,19 @@ class MainWindow(QMainWindow):
             }
             QLabel {
                 color: #6C584C;
-                font-size: 14px;
+                font-size: 16px;
+            }
+            /* 標題標籤樣式 */
+            QLabel#titleLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #6C584C;
+            }
+            /* 資訊標籤樣式 */
+            QLabel#infoLabel {
+                font-size: 16px;
+                font-weight: bold;
+                color: #6C584C;
             }
         """)
     
@@ -566,11 +609,13 @@ class MainWindow(QMainWindow):
         self.category_combo.addItems(self.categories)
         
         # 掃描圖片檔案
-        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff'}
+        image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']
         self.image_list = []
-        for ext in image_extensions:
-            self.image_list.extend(img_folder.glob(f"*{ext}"))
-            self.image_list.extend(img_folder.glob(f"*{ext.upper()}"))
+        
+        # 掃描所有圖片檔案（不區分大小寫）
+        for file_path in img_folder.iterdir():
+            if file_path.is_file() and file_path.suffix.lower() in image_extensions:
+                self.image_list.append(file_path)
         
         self.image_list.sort()
         
@@ -652,8 +697,15 @@ class MainWindow(QMainWindow):
     
     def update_navigation_buttons(self):
         """更新導航按鈕狀態"""
-        self.prev_btn.setEnabled(self.current_image_index > 0)
-        self.next_btn.setEnabled(self.current_image_index < len(self.image_list) - 1)
+        has_images = len(self.image_list) > 0
+        is_first = self.current_image_index <= 0
+        is_last = self.current_image_index >= len(self.image_list) - 1
+        
+        self.prev_btn.setEnabled(has_images and not is_first)
+        self.next_btn.setEnabled(has_images and not is_last)
+        
+        # 只在最後一張圖片時顯示完成按鈕
+        self.finish_btn.setVisible(has_images and is_last)
     
     def update_image_info(self):
         """更新圖片資訊顯示"""
@@ -694,11 +746,65 @@ class MainWindow(QMainWindow):
             self.save_current_annotations()
         event.accept()
 
+    def finish_annotation(self):
+        """完成標註"""
+        # 保存當前圖片的標註
+        if hasattr(self, 'previous_image_path') and self.annotation_manager:
+            self.save_current_annotations()
+        
+        # 顯示完成訊息
+        if self.annotation_manager:
+            xml_path = self.annotation_manager.xml_dir
+            QMessageBox.information(
+                self, 
+                "標註完成！", 
+                f"所有標註已完成並儲存！\n\nXML 檔案儲存位置:\n{xml_path.absolute()}\n\n程式將重新初始化。"
+            )
+        
+        # 重新初始化程式
+        self.reset_to_initial_state()
+    
+    def reset_to_initial_state(self):
+        """重置程式到初始狀態"""
+        # 清空所有資料
+        self.annotation_manager = None
+        self.categories = []
+        self.image_list = []
+        self.current_image_index = -1
+        self.current_folder = ""
+        
+        # 重置 UI 元件
+        self.category_combo.clear()
+        self.category_combo.addItem("(請選擇類別)")
+        
+        # 清空圖片畫布
+        self.image_canvas.pixmap = None
+        if hasattr(self.image_canvas, 'scaled_pixmap'):
+            delattr(self.image_canvas, 'scaled_pixmap')
+        self.image_canvas.annotations = []
+        self.image_canvas.drawing = False
+        self.image_canvas.current_annotation = None
+        self.image_canvas.selected_category = ""
+        self.image_canvas.update()
+        
+        # 重置按鈕狀態
+        self.prev_btn.setEnabled(False)
+        self.next_btn.setEnabled(False)
+        self.finish_btn.setVisible(False)
+        
+        # 重置標籤顯示
+        self.image_info_label.setText("請先匯入資料夾")
+        self.annotation_stats_label.setText("標註數量: 0")
+        
+        # 清除previous_image_path
+        if hasattr(self, 'previous_image_path'):
+            delattr(self, 'previous_image_path')
+
 
 def main():
     """主程式進入點"""
     app = QApplication(sys.argv)
-    app.setApplicationName("手動標註軟體")
+    app.setApplicationName("Image Labeling Tool")
     
     # 設定應用程式字體
     font = QFont("Microsoft JhengHei", 10)
